@@ -37,4 +37,15 @@ public class MenuServiceImpl implements MenuService {
 
         return menuRepository.save(menu);
     }
+
+    @Override
+    public Menu fetch(int restaurantId, int menuId) throws RestaurantMenuMismatchException, MenuNotFoundException, RestaurantNotFoundException {
+        Restaurant restaurant = restaurantRepository.findById(restaurantId).orElseThrow(()-> new RestaurantNotFoundException(RESTAURANT_NOT_FOUND));
+        Menu menu = menuRepository.findById(menuId).orElseThrow(()-> new MenuNotFoundException(MENU_NOT_FOUND));
+
+        if(!restaurant.getMenu().equals(menu))
+            throw new RestaurantMenuMismatchException(RESTAURANT_MENU_MISMATCH);
+
+        return menu;
+    }
 }

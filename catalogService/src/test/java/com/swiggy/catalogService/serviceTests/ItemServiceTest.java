@@ -106,4 +106,74 @@ public class ItemServiceTest {
 
         assertThrows(ItemNotInMenuException.class, ()-> itemService.updatePrice(1,1,2, 200.0));
     }
+
+    @Test
+    void testUpdateStatus_ExpectSuccessful() throws InvalidPriceException, MenuNotFoundException, ItemNotInMenuException, RestaurantMenuMismatchException, RestaurantNotFoundException, ItemNotFoundException {
+        Item item = new Item(1, "Wings", 180.0, ItemStatus.AVAILABLE);
+        Menu menu = new Menu(1, new ArrayList<>(List.of(item)));
+        Restaurant restaurant = new Restaurant(1, "JFC", "Ranchi", menu);
+        Item returnedItem = new Item(1, "Wings", 180.0, ItemStatus.OUT_OF_STOCK);
+        when(restaurantRepository.findById(1)).thenReturn(Optional.of(restaurant));
+        when(menuRepository.findById(1)).thenReturn(Optional.of(menu));
+        when(itemRepository.findById(1)).thenReturn(Optional.of(item));
+
+        itemService.updateStatus(1,1,1, ItemStatus.OUT_OF_STOCK);
+
+        assertEquals(returnedItem, item);
+        verify(itemRepository, times(1)).save(item);
+    }
+
+    @Test
+    void testUpdateStatus_ExpectRestaurantNotFoundException() throws InvalidPriceException, MenuNotFoundException, ItemNotInMenuException, RestaurantMenuMismatchException, RestaurantNotFoundException, ItemNotFoundException {
+        when(restaurantRepository.findById(1)).thenReturn(Optional.empty());
+
+        assertThrows(RestaurantNotFoundException.class,()-> itemService.updateStatus(1,1,1, ItemStatus.OUT_OF_STOCK));
+    }
+
+    @Test
+    void testUpdateStatus_ExpectMenuNotFoundException() throws InvalidPriceException, MenuNotFoundException, ItemNotInMenuException, RestaurantMenuMismatchException, RestaurantNotFoundException, ItemNotFoundException {
+        Menu menu = new Menu(1, new ArrayList<>());
+        Restaurant restaurant = new Restaurant(1, "JFC", "Ranchi", menu);
+        when(restaurantRepository.findById(1)).thenReturn(Optional.of(restaurant));
+        when(menuRepository.findById(2)).thenReturn(Optional.empty());
+
+        assertThrows(MenuNotFoundException.class,()-> itemService.updateStatus(1,1,1, ItemStatus.OUT_OF_STOCK));
+    }
+
+    @Test
+    void testUpdateStatus_ExpectItemNotFoundException() throws InvalidPriceException, MenuNotFoundException, ItemNotInMenuException, RestaurantMenuMismatchException, RestaurantNotFoundException, ItemNotFoundException {
+        Menu menu = new Menu(1, new ArrayList<>());
+        Restaurant restaurant = new Restaurant(1, "JFC", "Ranchi", menu);
+        when(restaurantRepository.findById(1)).thenReturn(Optional.of(restaurant));
+        when(menuRepository.findById(1)).thenReturn(Optional.of(menu));
+        when(itemRepository.findById(1)).thenReturn(Optional.empty());
+
+        assertThrows(ItemNotFoundException.class,()-> itemService.updateStatus(1,1,1, ItemStatus.OUT_OF_STOCK));
+    }
+
+    @Test
+    void testUpdateStatus_ExpectRestaurantMenuMismatchException() throws InvalidPriceException, MenuNotFoundException, ItemNotInMenuException, RestaurantMenuMismatchException, RestaurantNotFoundException, ItemNotFoundException {
+        Item item = new Item(1, "Wings", 180.0, ItemStatus.AVAILABLE);
+        Menu menu = new Menu(1, new ArrayList<>(List.of(item)));
+        Menu secondMenu = new Menu(1, new ArrayList<>());
+        Restaurant restaurant = new Restaurant(1, "JFC", "Ranchi", secondMenu);
+        when(restaurantRepository.findById(1)).thenReturn(Optional.of(restaurant));
+        when(menuRepository.findById(1)).thenReturn(Optional.of(menu));
+        when(itemRepository.findById(1)).thenReturn(Optional.of(item));
+
+        assertThrows(RestaurantMenuMismatchException.class, ()-> itemService.updateStatus(1,1,1, ItemStatus.OUT_OF_STOCK));
+    }
+
+    @Test
+    void testUpdateStatus_ExpectItemNotInMenuException() throws InvalidPriceException, MenuNotFoundException, ItemNotInMenuException, RestaurantMenuMismatchException, RestaurantNotFoundException, ItemNotFoundException {
+        Item item = new Item(1, "Wings", 180.0, ItemStatus.AVAILABLE);
+        Item secondItem =  new Item(2, "JINGS", 200.0, ItemStatus.AVAILABLE);
+        Menu menu = new Menu(1, new ArrayList<>(List.of(item)));
+        Restaurant restaurant = new Restaurant(1, "JFC", "Ranchi", menu);
+        when(restaurantRepository.findById(1)).thenReturn(Optional.of(restaurant));
+        when(menuRepository.findById(1)).thenReturn(Optional.of(menu));
+        when(itemRepository.findById(2)).thenReturn(Optional.of(secondItem));
+
+        assertThrows(ItemNotInMenuException.class, ()-> itemService.updateStatus(1,1,2, ItemStatus.OUT_OF_STOCK));
+    }
 }

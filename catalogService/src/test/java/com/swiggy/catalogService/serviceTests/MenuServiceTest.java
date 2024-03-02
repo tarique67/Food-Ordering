@@ -82,4 +82,47 @@ public class MenuServiceTest {
 
         assertThrows(RestaurantMenuMismatchException.class,()-> menuService.addItems(1,2,itemsToAdd));
     }
+
+    @Test
+    void testFetchMenu_ExpectSuccessful() throws MenuNotFoundException, RestaurantMenuMismatchException, RestaurantNotFoundException {
+        Menu menu = new Menu(1, new ArrayList<>(List.of(new Item(1, "Wings", 180.0, ItemStatus.AVAILABLE))));
+        Restaurant restaurant = new Restaurant(1, "JFC", "Ranchi", menu);
+        when(restaurantRepository.findById(1)).thenReturn(Optional.of(restaurant));
+        when(menuRepository.findById(1)).thenReturn(Optional.of(menu));
+
+        menuService.fetch(1,1);
+
+        verify(menuRepository, times(1)).findById(1);
+        verify(restaurantRepository, times(1)).findById(1);
+    }
+
+    @Test
+    void testFetchMenu_ExpectRestaurantNotFoundException() throws MenuNotFoundException, RestaurantMenuMismatchException, RestaurantNotFoundException {
+        Menu menu = new Menu(1, new ArrayList<>(List.of(new Item(1, "Wings", 180.0, ItemStatus.AVAILABLE))));
+        when(restaurantRepository.findById(1)).thenReturn(Optional.empty());
+        when(menuRepository.findById(1)).thenReturn(Optional.of(menu));
+
+        assertThrows(RestaurantNotFoundException.class,()-> menuService.fetch(1,1));
+    }
+
+    @Test
+    void testFetchMenu_ExpectMenuNotFoundException() throws MenuNotFoundException, RestaurantMenuMismatchException, RestaurantNotFoundException {
+        Menu menu = new Menu(2, new ArrayList<>(List.of(new Item(1, "Wings", 180.0, ItemStatus.AVAILABLE))));
+        Restaurant restaurant = new Restaurant(1, "JFC", "Ranchi", menu);
+        when(restaurantRepository.findById(1)).thenReturn(Optional.of(restaurant));
+        when(menuRepository.findById(1)).thenReturn(Optional.empty());
+
+        assertThrows(MenuNotFoundException.class,()-> menuService.fetch(1,1));
+    }
+
+    @Test
+    void testFetchMenu_ExpectRestaurantMenuMismatchException() throws MenuNotFoundException, RestaurantMenuMismatchException, RestaurantNotFoundException {
+        Menu menu = new Menu(1, new ArrayList<>(List.of(new Item(1, "Wings", 180.0, ItemStatus.AVAILABLE))));
+        Menu secondMenu = new Menu(2, new ArrayList<>(List.of(new Item(1, "Wings", 180.0, ItemStatus.AVAILABLE))));
+        Restaurant restaurant = new Restaurant(1, "JFC", "Ranchi", menu);
+        when(restaurantRepository.findById(1)).thenReturn(Optional.of(restaurant));
+        when(menuRepository.findById(2)).thenReturn(Optional.of(secondMenu));
+
+        assertThrows(RestaurantMenuMismatchException.class,()-> menuService.fetch(1,2));
+    }
 }

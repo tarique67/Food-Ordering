@@ -25,4 +25,10 @@ public class MenuController {
         Menu menu = menuService.addItems(restaurantId, menuId, items);
         return new ResponseEntity<>(menu, HttpStatus.CREATED);
     }
+
+    @GetMapping("{menu_id}")
+    public ResponseEntity<Menu> fetch(@PathVariable("restaurant_id") int restaurantId, @PathVariable("menu_id") int menuId) throws MenuNotFoundException, RestaurantMenuMismatchException, RestaurantNotFoundException {
+        Menu returnedMenu = menuService.fetch(restaurantId,menuId);
+        return new ResponseEntity<>(returnedMenu, HttpStatus.OK);
+    }
 }

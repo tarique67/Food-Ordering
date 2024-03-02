@@ -20,12 +20,17 @@ public class ItemController {
 
     @PutMapping("/{itemId}")
     public ResponseEntity<Item> updatePrice(@PathVariable("restaurantId") int restaurantId, @PathVariable("menuId") int menuId, @PathVariable("itemId") int itemId, @RequestParam(required = false) Integer price, @RequestParam(required = false) ItemStatus status) throws InvalidPriceException, MenuNotFoundException, ItemNotInMenuException, RestaurantMenuMismatchException, RestaurantNotFoundException, ItemNotFoundException {
-        Item item;
-        if(price != null)
+        Item item = new Item();
+        boolean updated = false;
+        if(price != null){
             item = itemService.updatePrice(restaurantId, menuId, itemId, price);
-        else if(status != null)
+            updated = true;
+        }
+        if(status != null){
             item = itemService.updateStatus(restaurantId,menuId,itemId,status);
-        else
+            updated = true;
+        }
+        if(!updated)
             throw new IllegalArgumentException(SPECIFY_PRICE_STATUS_UPDATE);
         return new ResponseEntity<>(item, HttpStatus.OK);
     }
