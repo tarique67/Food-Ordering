@@ -31,4 +31,25 @@ public class GlobalExceptionHandler {
 
         return new ResponseEntity<ErrorDetails>(err, HttpStatus.BAD_REQUEST);
     }
+
+    @ExceptionHandler(InvalidPriceException.class)
+    public ResponseEntity<ErrorDetails> invalidPriceExceptionHandler(InvalidPriceException exception, WebRequest re){
+        ErrorDetails err = new ErrorDetails(LocalDateTime.now(), exception.getMessage(), re.getDescription(false));
+
+        return new ResponseEntity<ErrorDetails>(err, HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler(ItemNotFoundException.class)
+    public ResponseEntity<ErrorDetails> itemNotFoundExceptionHandler(ItemNotFoundException exception, WebRequest re){
+        ErrorDetails err = new ErrorDetails(LocalDateTime.now(), exception.getMessage(), re.getDescription(false));
+
+        return new ResponseEntity<ErrorDetails>(err, HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<ErrorDetails> illegalArgumentExceptionHandler(IllegalArgumentException exception, WebRequest re){
+        ErrorDetails err = new ErrorDetails(LocalDateTime.now(), exception.getMessage(), re.getDescription(false));
+
+        return new ResponseEntity<ErrorDetails>(err, HttpStatus.BAD_REQUEST);
+    }
 }

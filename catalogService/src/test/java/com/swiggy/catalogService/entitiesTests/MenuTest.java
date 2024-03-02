@@ -8,7 +8,7 @@ import org.junit.jupiter.api.Test;
 import java.util.ArrayList;
 import java.util.Arrays;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.*;
 
 public class MenuTest {
 
@@ -40,5 +40,19 @@ public class MenuTest {
         menu.addItems(new ArrayList<>(Arrays.asList(new Item(1,"Wings", 200.0, ItemStatus.AVAILABLE))));
 
         assertEquals(expected, menu);
+    }
+
+    @Test
+    void testHasItem_ExpectTrue() {
+        Menu menu = new Menu(1, new ArrayList<>(Arrays.asList(new Item(1, "Wings", 180.0, ItemStatus.AVAILABLE))));
+
+        assertTrue(menu.hasItem(new Item(1,"Wings", 180.0, ItemStatus.AVAILABLE)));
+    }
+
+    @Test
+    void testHasItem_ExpectFalse() {
+        Menu menu = new Menu(1, new ArrayList<>(Arrays.asList(new Item(1, "Wings", 180.0, ItemStatus.AVAILABLE))));
+
+        assertFalse(menu.hasItem(new Item(2,"InvalidItem", 180.0, ItemStatus.AVAILABLE)));
     }
 }

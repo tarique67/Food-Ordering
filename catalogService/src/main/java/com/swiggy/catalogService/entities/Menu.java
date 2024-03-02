@@ -29,4 +29,8 @@ public class Menu {
 
         this.items.addAll(items);
     }
+
+    public boolean hasItem(Item item) {
+        return items.contains(item);
+    }
 }
