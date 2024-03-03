@@ -31,7 +31,7 @@ public class OrdersTest {
     private Orders order;
 
     @Test
-    void testOrderCreated_ExpectSuccessful() throws JsonProcessingException, ItemNotInRestaurantException {
+    void testCreateOrder_ExpectSuccessful() throws JsonProcessingException, ItemNotInRestaurantException {
         Customer customer = new Customer(1, "test", "test", "test", new ArrayList<>());
         List<Item> items = new ArrayList<>(List.of(new Item(1, "wings", 180.0), new Item(2, "rings", 180.0)));
         Menu menu = new Menu(1, items);
@@ -46,12 +46,11 @@ public class OrdersTest {
     }
 
     @Test
-    void testOrderCreated_ExpectItemNotInRestaurantException() throws JsonProcessingException, ItemNotInRestaurantException {
+    void testCreateOrder_ExpectItemNotInRestaurantException() throws JsonProcessingException, ItemNotInRestaurantException {
         Customer customer = new Customer(1, "test", "test", "test", new ArrayList<>());
         List<Item> items = new ArrayList<>(List.of(new Item(1, "wings", 180.0), new Item(2, "rings", 180.0)));
         Menu menu = new Menu(1, items);
         Restaurant restaurant = new Restaurant(1, "KFC", "Ranchi", menu);
-        Orders expected = new Orders(null, 1, OrderStatus.ACCEPTED, 360.0, customer, items);
         Orders actual = new Orders();
         when(catalogServiceClient.fetchRestaurantFromCatalogService(1)).thenReturn(restaurant);
 
