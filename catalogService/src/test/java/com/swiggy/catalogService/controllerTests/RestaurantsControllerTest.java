@@ -13,6 +13,7 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
+import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.util.List;
@@ -42,6 +43,7 @@ public class RestaurantsControllerTest {
     }
 
     @Test
+    @WithMockUser(username = "testUser")
     void testRestaurantCreation_ExpectSuccessful() throws Exception {
         Menu menu = new Menu(1, List.of(new Item(1, "Wings", 180.0, ItemStatus.AVAILABLE)));
         Restaurant restaurant = new Restaurant(1, "JFC", "Ranchi", menu);

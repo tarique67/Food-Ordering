@@ -13,6 +13,7 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
+import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.util.ArrayList;
@@ -42,6 +43,7 @@ public class ItemControllerTest {
     }
 
     @Test
+    @WithMockUser(username = "testUser")
     void testUpdatePrice_ExpectSuccessful() throws Exception {
         Item item = new Item(1, "Wings", 180.0, ItemStatus.AVAILABLE);
         Menu menu = new Menu(1, new ArrayList<>(List.of(item)));
@@ -57,6 +59,7 @@ public class ItemControllerTest {
     }
 
     @Test
+    @WithMockUser(username = "testUser")
     void testUpdateStatus_ExpectSuccessful() throws Exception {
         Item item = new Item(1, "Wings", 180.0, ItemStatus.AVAILABLE);
         Menu menu = new Menu(1, new ArrayList<>(List.of(item)));
@@ -72,6 +75,7 @@ public class ItemControllerTest {
     }
 
     @Test
+    @WithMockUser(username = "testUser")
     void testUpdateStatus_ExpectException() throws Exception {
         Item item = new Item(1, "Wings", 180.0, ItemStatus.AVAILABLE);
         Menu menu = new Menu(1, new ArrayList<>(List.of(item)));

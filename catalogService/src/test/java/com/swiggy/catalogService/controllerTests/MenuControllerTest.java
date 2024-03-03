@@ -12,6 +12,7 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
+import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.util.ArrayList;
@@ -42,6 +43,7 @@ public class MenuControllerTest {
     }
 
     @Test
+    @WithMockUser(username = "testUser")
     void testItemsAddedToMenu_ExpectSuccessful() throws Exception {
         Menu menu = new Menu(1, new ArrayList<>(List.of(new Item(1, "Wings", 180.0, ItemStatus.AVAILABLE))));
         List<Item> itemsToAdd = new ArrayList<>(List.of(new Item(2, "Jings", 180.0, ItemStatus.AVAILABLE)));
