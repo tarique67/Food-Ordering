@@ -10,7 +10,7 @@ message Delivery_Order {
 }
 
 message Deliver_Executive {
-   string deliveryExecutiveId =1;
+   int64 deliveryExecutiveId =1;
 	string name =2;
    string location =3;
    repeated Delivery_Order deliveryOrders =4;
