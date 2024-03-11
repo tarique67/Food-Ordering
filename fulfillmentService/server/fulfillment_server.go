@@ -35,18 +35,18 @@ const (
 )
 
 type Order struct {
-	OrderID        int64  `gorm:"primarykey"`
-	DeliveryStatus Status `gorm:"type:varchar(100)"`
+	OrderID             int64  `gorm:"primarykey"`
+	DeliveryStatus      Status `gorm:"type:varchar(100)"`
 	DeliveryExecutiveId int64
 }
 
 type Delivery_Executive struct {
-	ID       int64 `gorm:"primarykey AUTO_INCREMENT"`
-	Name     string
-	Location string
-	OrderIds []Order `gorm:"foreignkey:DeliveryExecutiveId"`
-	Availability bool 
-	Password    string
+	ID           int64 `gorm:"primarykey AUTO_INCREMENT"`
+	Name         string
+	Location     string
+	OrderIds     []Order `gorm:"foreignkey:DeliveryExecutiveId"`
+	Availability bool
+	Password     string
 }
 
 func DatabaseConnection() *gorm.DB {
@@ -89,14 +89,18 @@ func (s *server) CreateDeliveryExecutive(ctx context.Context, req *pb.CreateDeli
 	delivery_executive := req.GetDeliveryExecutive()
 
 	data := Delivery_Executive{
-		Name:     delivery_executive.GetName(),
-		Location: delivery_executive.GetLocation(),
-		OrderIds: []Order{},
+		Name:         delivery_executive.GetName(),
+		Location:     delivery_executive.GetLocation(),
+		OrderIds:     []Order{},
 		Availability: true,
-		Password:    delivery_executive.GetPassword(),
+		Password:     delivery_executive.GetPassword(),
 	}
 
 	res := s.DB.Create(&data)
+	if res.Error != nil {
+		errorString := fmt.Sprintf("Error storing the delivery: %v", res.Error)
+		return nil, status.Errorf(codes.Unknown, errorString)
+	}
 	if res.RowsAffected == 0 {
 		return nil, errors.New("user creation unsuccessful")
 	}
@@ -107,7 +111,7 @@ func (s *server) CreateDeliveryExecutive(ctx context.Context, req *pb.CreateDeli
 			Name:                data.Name,
 			Location:            data.Location,
 			DeliveryOrders:      []*pb.Delivery_Order{},
-			Password:               data.Password,
+			Password:            data.Password,
 		},
 	}, nil
 }
@@ -154,72 +158,72 @@ func (s *server) UpdateStatus(ctx context.Context, req *pb.UpdateStatusRequest) 
 	fmt.Println("Update Status")
 
 	delivery_executive, err := s.getCredentials(ctx)
-	if err!= nil {
+	if err != nil {
 		errorString := fmt.Sprintf("%v", err)
 		return nil, status.Error(codes.Unauthenticated, errorString)
-	} 
+	}
 
-    orderId := req.GetOrderId()
-    status := req.GetStatus()
+	orderId := req.GetOrderId()
+	status := req.GetStatus()
 
-    var order Order
-    if err := s.DB.Where("order_id = ?", orderId).First(&order).Error; err != nil {
-        return nil, err
-    }
+	var order Order
+	if err := s.DB.Where("order_id = ?", orderId).First(&order).Error; err != nil {
+		return nil, err
+	}
 
 	if order.DeliveryExecutiveId != delivery_executive.ID {
 		return nil, fmt.Errorf("Order does not belong to this delivery executive.")
 	}
 
-    if err := s.DB.Model(&order).Update("delivery_status", status).Error; err != nil {
-        return nil, err
-    }
+	if err := s.DB.Model(&order).Update("delivery_status", status).Error; err != nil {
+		return nil, err
+	}
 
-    if status == "DELIVERED" {
-        var deliveryExecutive Delivery_Executive
-        if err := s.DB.Where("id = ?", order.DeliveryExecutiveId).First(&deliveryExecutive).Error; err != nil {
-            return nil, err
-        }
+	if status == "DELIVERED" {
+		var deliveryExecutive Delivery_Executive
+		if err := s.DB.Where("id = ?", order.DeliveryExecutiveId).First(&deliveryExecutive).Error; err != nil {
+			return nil, err
+		}
 
-        deliveryExecutive.Availability = true
-        if err := s.DB.Save(&deliveryExecutive).Error; err != nil {
-            return nil, err
-        }
-    }
+		deliveryExecutive.Availability = true
+		if err := s.DB.Save(&deliveryExecutive).Error; err != nil {
+			return nil, err
+		}
+	}
 
 	// Update the status in the order service
-    if err := updateOrderStatusInOrderService(orderId, status); err != nil {
-        return nil, err
-    }
+	if err := updateOrderStatusInOrderService(orderId, status); err != nil {
+		return nil, err
+	}
 
-    return &pb.UpdateStatusResponse{
-        OrderId: orderId,
-        Status:  status,
-    }, nil
+	return &pb.UpdateStatusResponse{
+		OrderId: orderId,
+		Status:  status,
+	}, nil
 }
 
 func updateOrderStatusInOrderService(orderId int64, status string) error {
-    url := fmt.Sprintf("http://localhost:8092/api/v1/orders/%d?status=%s", orderId, status)
-    req, err := http.NewRequest(http.MethodPut, url, nil)
-    if err != nil {
-        return err
-    }
+	url := fmt.Sprintf("http://localhost:8092/api/v1/orders/%d?status=%s", orderId, status)
+	req, err := http.NewRequest(http.MethodPut, url, nil)
+	if err != nil {
+		return err
+	}
 
-    client := http.DefaultClient
-    resp, err := client.Do(req)
-    if err != nil {
-        return err
-    }
-    defer resp.Body.Close()
+	client := http.DefaultClient
+	resp, err := client.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
 
-    if resp.StatusCode != http.StatusOK {
-        return fmt.Errorf("unexpected status code: %d", resp.StatusCode)
-    }
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("unexpected status code: %d", resp.StatusCode)
+	}
 
-    return nil
+	return nil
 }
 
-func(s *server) getCredentials(ctx context.Context) (Delivery_Executive, error) {
+func (s *server) getCredentials(ctx context.Context) (Delivery_Executive, error) {
 	md, _ := metadata.FromIncomingContext(ctx)
 	authHeader, ok := md["authorization"]
 

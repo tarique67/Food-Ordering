@@ -1,136 +1,239 @@
 package main
 
 import (
-    "context"
-    // "fmt"
-    // "net/http"
-    // "net/http/httptest"
-    "testing"
+	"context"
+	"encoding/base64"
+	"testing"
 
-    pb "fulfillment_service/proto"
+	pb "fulfillment_service/proto"
+
+	"github.com/DATA-DOG/go-sqlmock"
+	"github.com/stretchr/testify/assert"
+	"google.golang.org/grpc/metadata"
+
+	"gorm.io/driver/postgres"
+	"gorm.io/gorm"
 )
 
-type MockDB struct{}
-
-func (m *MockDB) CreateDeliveryExecutive(ctx context.Context, req *pb.CreateDeliveryExecutiveReuqest) (*pb.CreateDeliveryExecutiveResponse, error) {
-    return &pb.CreateDeliveryExecutiveResponse{
-        DeliveryExecutive: &pb.Deliver_Executive{
-            DeliveryExecutiveId: 1,
-            Name:                req.GetDeliveryExecutive().GetName(),
-            Location:            req.GetDeliveryExecutive().GetLocation(),
-            Token:               "mockToken",
-        },
-    }, nil
-}
-
-func (m *MockDB) AssignOrder(ctx context.Context, req *pb.AssignOrderRequest) (*pb.AssignOrderResponse, error) {
-    order := req.GetOrder()
-    order.Status = "ASSIGNED"
-    order.DeliveryExecutiveId = 1
-    return &pb.AssignOrderResponse{Order: order}, nil
-}
-
-func (m *MockDB) UpdateStatus(ctx context.Context, req *pb.UpdateStatusRequest) (*pb.UpdateStatusResponse, error) {
-    orderID := req.GetOrderId()
-    status := req.GetStatus()
-    return &pb.UpdateStatusResponse{OrderId: orderID, Status: status}, nil
-}
-
-type MockServer struct {
-    DB *MockDB
-}
-
-func (s *MockServer) CreateDeliveryExecutive(ctx context.Context, req *pb.CreateDeliveryExecutiveReuqest) (*pb.CreateDeliveryExecutiveResponse, error) {
-    return s.DB.CreateDeliveryExecutive(ctx, req)
-}
-
-func (s *MockServer) AssignOrder(ctx context.Context, req *pb.AssignOrderRequest) (*pb.AssignOrderResponse, error) {
-    return s.DB.AssignOrder(ctx, req)
-}
-
-func (s *MockServer) UpdateStatus(ctx context.Context, req *pb.UpdateStatusRequest) (*pb.UpdateStatusResponse, error) {
-    return s.DB.UpdateStatus(ctx, req)
-}
-
 func TestCreateDeliveryExecutive(t *testing.T) {
-    server := &MockServer{DB: &MockDB{}}
+	db, mock, err := sqlmock.New()
+	assert.Nil(t, err, "Error creating mock db: %v", err)
+	defer db.Close()
 
-    req := &pb.CreateDeliveryExecutiveReuqest{
-        DeliveryExecutive: &pb.Deliver_Executive{
-            Name:     "John Doe",
-            Location: "New York",
-        },
-    }
+	dialect := postgres.New(postgres.Config{
+		Conn:       db,
+		DriverName: "postgres",
+	})
+	gormDB, err := gorm.Open(dialect, &gorm.Config{})
+	assert.Nil(t, err, "Error creating mock gorm db: %v", err)
 
-    resp, err := server.CreateDeliveryExecutive(context.Background(), req)
-    if err != nil {
-        t.Errorf("Unexpected error: %v", err)
-    }
+	tests := []struct {
+		name     string
+		req      *pb.CreateDeliveryExecutiveReuqest
+		rows     func()
+		want     *pb.CreateDeliveryExecutiveResponse
+		wantErr  bool
+		errorMsg string
+	}{
+		{
+			name: "Create delivery executive - Success",
+			req: &pb.CreateDeliveryExecutiveReuqest{
+				DeliveryExecutive: &pb.Deliver_Executive{
+					Name:     "John Doe",
+					Location: "New York",
+					Password: "password123",
+				},
+			},
+			rows: func() {
+				mock.ExpectBegin()
+				rows := sqlmock.NewRows([]string{"id", "name", "location", "password"}).AddRow(1, "John Doe", "New York", "password123")
+				mock.ExpectQuery("INSERT").WillReturnRows(rows)
+				mock.ExpectCommit()
+			},
+			want: &pb.CreateDeliveryExecutiveResponse{
+				DeliveryExecutive: &pb.Deliver_Executive{
+					DeliveryExecutiveId: 1,
+					Name:                "John Doe",
+					Location:            "New York",
+					Password:            "password123",
+					DeliveryOrders:      []*pb.Delivery_Order{},
+				},
+			},
+			wantErr:  false,
+			errorMsg: "",
+		},
+		// Add more test cases for failure scenarios
+	}
 
-    if resp.DeliveryExecutive.Token != "mockToken" {
-        t.Errorf("Token mismatch. Expected: %s, Got: %s", "mockToken", resp.DeliveryExecutive.Token)
-    }
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.rows()
+
+			server := &server{DB: gormDB}
+
+			got, err := server.CreateDeliveryExecutive(context.Background(), tt.req)
+
+			if (err != nil) != tt.wantErr {
+				t.Errorf("CreateDeliveryExecutive() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+
+			if tt.wantErr && err.Error() != tt.errorMsg {
+				t.Errorf("CreateDeliveryExecutive() error message = %v, expected %v", err.Error(), tt.errorMsg)
+			}
+
+			assert.Equal(t, tt.want, got)
+		})
+	}
 }
 
 func TestAssignOrder(t *testing.T) {
-    server := &MockServer{DB: &MockDB{}}
+	db, mock, err := sqlmock.New()
+	assert.Nil(t, err, "Error creating mock db: %v", err)
+	defer db.Close()
 
-    req := &pb.AssignOrderRequest{
-        Order: &pb.Order{
-            OrderId:        1,
-            PickUpLocation: "New York",
-        },
-    }
+	dialect := postgres.New(postgres.Config{
+		Conn:       db,
+		DriverName: "postgres",
+	})
+	gormDB, err := gorm.Open(dialect, &gorm.Config{})
+	assert.Nil(t, err, "Error creating mock gorm db: %v", err)
 
-    resp, err := server.AssignOrder(context.Background(), req)
-    if err != nil {
-        t.Errorf("Unexpected error: %v", err)
-    }
+	tests := []struct {
+		name     string
+		req      *pb.AssignOrderRequest
+		rows     func()
+		want     *pb.AssignOrderResponse
+		wantErr  bool
+		errorMsg string
+	}{
+		{
+			name: "Assign order - Success",
+			req: &pb.AssignOrderRequest{
+				Order: &pb.Order{
+					OrderId:             1,
+					PickUpLocation:      "New York",
+					Status:              "PICKED_UP",
+					DeliveryExecutiveId: 1,
+				},
+			},
+			rows: func() {
+				mock.ExpectQuery("SELECT").WillReturnRows(sqlmock.NewRows([]string{"id", "name", "location", "password", "availability"}).AddRow(1, "John Doe", "New York", "password123", true))
+				mock.ExpectBegin()
+				mock.ExpectExec("UPDATE").WillReturnResult(sqlmock.NewResult(1, 1))
+				mock.ExpectCommit()
+				mock.ExpectBegin()
+				mock.ExpectExec("UPDATE").WillReturnResult(sqlmock.NewResult(1, 1))
+				mock.ExpectCommit()
+			},
+			want: &pb.AssignOrderResponse{
+				Order: &pb.Order{
+					OrderId:             1,
+					PickUpLocation:      "New York",
+					Status:              "ASSIGNED",
+					DeliveryExecutiveId: 1,
+				},
+			},
+			wantErr:  false,
+			errorMsg: "",
+		},
+		// Add more test cases for failure scenarios
+	}
 
-    if resp.Order.Status != "ASSIGNED" {
-        t.Errorf("Expected status: %s, Got: %s", "ASSIGNED", resp.Order.Status)
-    }
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.rows()
+
+			server := &server{DB: gormDB}
+
+			got, err := server.AssignOrder(context.Background(), tt.req)
+
+			if (err != nil) != tt.wantErr {
+				t.Errorf("AssignOrder() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+
+			if tt.wantErr && err.Error() != tt.errorMsg {
+				t.Errorf("AssignOrder() error message = %v, expected %v", err.Error(), tt.errorMsg)
+			}
+
+			assert.Equal(t, tt.want, got)
+		})
+	}
 }
+
 
 func TestUpdateStatus(t *testing.T) {
-    server := &MockServer{DB: &MockDB{}}
+	db, mock, err := sqlmock.New()
+	assert.Nil(t, err, "Error creating mock db: %v", err)
+	defer db.Close()
 
-    req := &pb.UpdateStatusRequest{
-        OrderId: 1,
-        Status:  "DELIVERED",
+	dialect := postgres.New(postgres.Config{
+		Conn:       db,
+		DriverName: "postgres",
+	})
+	gormDB, err := gorm.Open(dialect, &gorm.Config{})
+	assert.Nil(t, err, "Error creating mock gorm db: %v", err)
+
+	type args struct {
+        ctx context.Context
+        req *pb.UpdateStatusRequest
     }
 
-    resp, err := server.UpdateStatus(context.Background(), req)
-    if err != nil {
-        t.Errorf("Unexpected error: %v", err)
-    }
+	tests := []struct {
+		name     string
+		args     args
+		rows     func()
+		want     *pb.UpdateStatusResponse
+		wantErr  bool
+		errorMsg string
+	}{
+		{
+			name: "Update status - Success",
+			args: args{
+				ctx: metadata.NewIncomingContext(context.Background(), metadata.MD{
+					"authorization": []string{"Basic " + base64.StdEncoding.EncodeToString([]byte("John Doe:password123"))},
+				}),
+				req: &pb.UpdateStatusRequest{
+					OrderId: 1,
+					Status: "PICKED_UP",
+				},
+			},
+			rows: func() {
+				mock.ExpectQuery("SELECT").WillReturnRows(sqlmock.NewRows([]string{"id", "name", "location", "password", "availability"}).AddRow(1, "John Doe", "New York", "password123", false))
+				mock.ExpectQuery("SELECT").WillReturnRows(sqlmock.NewRows([]string{"order_id", "delivery_status", "delivery_executive_id"}).AddRow(1, "ASSIGNED", 1))
+				mock.ExpectBegin()
+				mock.ExpectExec("UPDATE").WillReturnResult(sqlmock.NewResult(1, 1))
+				mock.ExpectCommit()
+			},
+			want: &pb.UpdateStatusResponse{
+				OrderId: 1,
+				Status:  "PICKED_UP",
+			},
+			wantErr:  false,
+			errorMsg: "",
+		},
+		// Add more test cases for failure scenarios
+	}
 
-    if resp.Status != "DELIVERED" {
-        t.Errorf("Expected status: %s, Got: %s", "DELIVERED", resp.Status)
-    }
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.rows()
+
+			server := &server{DB: gormDB}
+
+			got, err := server.UpdateStatus(tt.args.ctx, tt.args.req)
+
+			if (err != nil) != tt.wantErr {
+				t.Errorf("UpdateStatus() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+
+			if tt.wantErr && err.Error() != tt.errorMsg {
+				t.Errorf("UpdateStatus() error message = %v, expected %v", err.Error(), tt.errorMsg)
+			}
+
+			assert.Equal(t, tt.want, got)
+		})
+	}
 }
-
-// func TestUpdateStatus_OrderServiceFailure(t *testing.T) {
-//     server := &MockServer{DB: &MockDB{}}
-
-//     req := &pb.UpdateStatusRequest{
-//         OrderId: 1,
-//         Status:  "DELIVERED",
-//     }
-
-//     // Mock HTTP server for updateOrderStatusInOrderService
-//     ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-//         w.WriteHeader(http.StatusInternalServerError)
-//     }))
-//     defer ts.Close()
-
-//     // Override the URL in the function with the mock server's URL
-//     updateOrderStatusInOrderService = func(orderId int64, status string) error {
-//         return fmt.Errorf("Order service failure")
-//     }
-
-//     _, err := server.UpdateStatus(context.Background(), req)
-//     if err == nil {
-//         t.Errorf("Expected an error but got nil")
-//     }
-// }
