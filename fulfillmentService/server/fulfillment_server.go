@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/base64"
 	"errors"
 	"flag"
 	"fmt"
@@ -9,10 +10,11 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"strings"
 
-	"github.com/google/uuid"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
@@ -44,7 +46,7 @@ type Delivery_Executive struct {
 	Location string
 	OrderIds []Order `gorm:"foreignkey:DeliveryExecutiveId"`
 	Availability bool 
-	Token    string
+	Password    string
 }
 
 func DatabaseConnection() *gorm.DB {
@@ -85,14 +87,13 @@ type server struct {
 func (s *server) CreateDeliveryExecutive(ctx context.Context, req *pb.CreateDeliveryExecutiveReuqest) (*pb.CreateDeliveryExecutiveResponse, error) {
 	fmt.Println("Create Delivery Executive.")
 	delivery_executive := req.GetDeliveryExecutive()
-	delivery_executive.Token = uuid.New().String()
 
 	data := Delivery_Executive{
 		Name:     delivery_executive.GetName(),
 		Location: delivery_executive.GetLocation(),
 		OrderIds: []Order{},
 		Availability: true,
-		Token:    delivery_executive.GetToken(),
+		Password:    delivery_executive.GetPassword(),
 	}
 
 	res := s.DB.Create(&data)
@@ -106,7 +107,7 @@ func (s *server) CreateDeliveryExecutive(ctx context.Context, req *pb.CreateDeli
 			Name:                data.Name,
 			Location:            data.Location,
 			DeliveryOrders:      []*pb.Delivery_Order{},
-			Token:               data.Token,
+			Password:               data.Password,
 		},
 	}, nil
 }
@@ -151,6 +152,13 @@ func (s *server) AssignOrder(ctx context.Context, req *pb.AssignOrderRequest) (*
 
 func (s *server) UpdateStatus(ctx context.Context, req *pb.UpdateStatusRequest) (*pb.UpdateStatusResponse, error) {
 	fmt.Println("Update Status")
+
+	delivery_executive, err := s.getCredentials(ctx)
+	if err!= nil {
+		errorString := fmt.Sprintf("%v", err)
+		return nil, status.Error(codes.Unauthenticated, errorString)
+	} 
+
     orderId := req.GetOrderId()
     status := req.GetStatus()
 
@@ -158,6 +166,10 @@ func (s *server) UpdateStatus(ctx context.Context, req *pb.UpdateStatusRequest) 
     if err := s.DB.Where("order_id = ?", orderId).First(&order).Error; err != nil {
         return nil, err
     }
+
+	if order.DeliveryExecutiveId != delivery_executive.ID {
+		return nil, fmt.Errorf("Order does not belong to this delivery executive.")
+	}
 
     if err := s.DB.Model(&order).Update("delivery_status", status).Error; err != nil {
         return nil, err
@@ -205,6 +217,41 @@ func updateOrderStatusInOrderService(orderId int64, status string) error {
     }
 
     return nil
+}
+
+func(s *server) getCredentials(ctx context.Context) (Delivery_Executive, error) {
+	md, _ := metadata.FromIncomingContext(ctx)
+	authHeader, ok := md["authorization"]
+
+	if !ok || len(authHeader) == 0 {
+		return Delivery_Executive{}, errors.New("authorization header not found")
+	}
+
+	authParts := strings.Fields(authHeader[0])
+	if len(authParts) != 2 || authParts[0] != "Basic" {
+		return Delivery_Executive{}, errors.New("invalid Authorization header format")
+	}
+
+	decodedCredentials, err := base64.StdEncoding.DecodeString(authParts[1])
+	if err != nil {
+		return Delivery_Executive{}, errors.New("error decoding base64 credentials")
+	}
+
+	credentials := strings.SplitN(string(decodedCredentials), ":", 2)
+	if len(credentials) != 2 {
+		return Delivery_Executive{}, errors.New("invalid credentials format")
+	}
+
+	username := credentials[0]
+	password := credentials[1]
+
+	var user Delivery_Executive
+	err = s.DB.Where("name = ? AND password = ?", username, password).First(&user).Error
+	if err != nil {
+		return Delivery_Executive{}, errors.New("invalid credentials")
+	}
+
+	return user, nil
 }
 
 func main() {

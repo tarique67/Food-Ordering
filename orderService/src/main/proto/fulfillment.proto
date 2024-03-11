@@ -15,7 +15,7 @@ message Deliver_Executive {
   string name =2;
   string location =3;
   repeated Delivery_Order deliveryOrders =4;
-  string token =5;
+  string password =5;
 }
 
 message Order {
