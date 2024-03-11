@@ -8,6 +8,7 @@ import com.swiggy.orderService.entities.Customer;
 import com.swiggy.orderService.entities.Item;
 import com.swiggy.orderService.entities.Orders;
 import com.swiggy.orderService.enums.OrderStatus;
+import com.swiggy.orderService.exceptions.DeliveryExecutiveNotFoundException;
 import com.swiggy.orderService.exceptions.ItemNotInRestaurantException;
 import org.junit.jupiter.api.Test;
 import org.mockito.InjectMocks;
@@ -31,12 +32,12 @@ public class OrdersTest {
     private Orders order;
 
     @Test
-    void testCreateOrder_ExpectSuccessful() throws JsonProcessingException, ItemNotInRestaurantException {
+    void testCreateOrder_ExpectSuccessful() throws JsonProcessingException, ItemNotInRestaurantException, DeliveryExecutiveNotFoundException {
         Customer customer = new Customer(1, "test", "test", "test", new ArrayList<>());
-        List<Item> items = new ArrayList<>(List.of(new Item(1, "wings", 180.0), new Item(2, "rings", 180.0)));
+        List<Item> items = new ArrayList<>(List.of(new Item(null,1, "wings", 180.0), new Item(null,2, "rings", 180.0)));
         Menu menu = new Menu(1, items);
         Restaurant restaurant = new Restaurant(1, "KFC", "Ranchi", menu);
-        Orders expected = new Orders(null, 1, OrderStatus.ACCEPTED, 360.0, customer, items);
+        Orders expected = new Orders(null, 1, OrderStatus.ACCEPTED, 360.0, customer, items, null);
         Orders actual = new Orders();
         when(catalogServiceClient.fetchRestaurantFromCatalogService(1)).thenReturn(restaurant);
 
@@ -48,7 +49,7 @@ public class OrdersTest {
     @Test
     void testCreateOrder_ExpectItemNotInRestaurantException() throws JsonProcessingException, ItemNotInRestaurantException {
         Customer customer = new Customer(1, "test", "test", "test", new ArrayList<>());
-        List<Item> items = new ArrayList<>(List.of(new Item(1, "wings", 180.0), new Item(2, "rings", 180.0)));
+        List<Item> items = new ArrayList<>(List.of(new Item(1,1, "wings", 180.0), new Item(2,2, "rings", 180.0)));
         Menu menu = new Menu(1, items);
         Restaurant restaurant = new Restaurant(1, "KFC", "Ranchi", menu);
         Orders actual = new Orders();

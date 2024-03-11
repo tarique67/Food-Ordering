@@ -47,8 +47,8 @@ public class OrdersControllerTest {
     @WithMockUser(username = "testUser")
     void testCreateOrder_ExpectSuccessful() throws Exception {
         OrdersRequestModel request = new OrdersRequestModel(1, List.of("wings","rings"));
-        List<Item> items = new ArrayList<>(List.of(new Item(1, "wings", 180.0), new Item(2, "rings", 180.0)));
-        OrdersResponseModel response = new OrdersResponseModel(1,1, OrderStatus.ACCEPTED,360.0,"testUser",items);
+        List<Item> items = new ArrayList<>(List.of(new Item(1,1, "wings", 180.0), new Item(2,2, "rings", 180.0)));
+        OrdersResponseModel response = new OrdersResponseModel(1,1, OrderStatus.ACCEPTED,360.0,"testUser",items,1);
         when(ordersService.create("testUser", request)).thenReturn(response);
 
         mockMvc.perform(post("/api/v1/orders").
@@ -64,8 +64,8 @@ public class OrdersControllerTest {
     @WithMockUser(username = "testUser")
     void testFetchOrder_ExpectSuccessful() throws Exception {
         OrdersRequestModel request = new OrdersRequestModel(1, List.of("wings","rings"));
-        List<Item> items = new ArrayList<>(List.of(new Item(1, "wings", 180.0), new Item(2, "rings", 180.0)));
-        OrdersResponseModel response = new OrdersResponseModel(1,1, OrderStatus.ACCEPTED,360.0,"testUser",items);
+        List<Item> items = new ArrayList<>(List.of(new Item(1,1, "wings", 180.0), new Item(2,2, "rings", 180.0)));
+        OrdersResponseModel response = new OrdersResponseModel(1,1, OrderStatus.ACCEPTED,360.0,"testUser",items,1);
         when(ordersService.fetch("testUser", 1)).thenReturn(response);
 
         mockMvc.perform(get("/api/v1/orders/1").

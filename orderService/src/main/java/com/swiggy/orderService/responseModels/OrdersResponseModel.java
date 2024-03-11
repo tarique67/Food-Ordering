@@ -20,4 +20,5 @@ public class OrdersResponseModel {
     private Double total_price;
     private String customer;
     private List<Item> items;
+    private Integer deliveryExecutiveId;
 }

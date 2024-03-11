@@ -2,6 +2,7 @@ plugins {
 	id 'java'
 	id 'org.springframework.boot' version '3.2.3'
 	id 'io.spring.dependency-management' version '1.1.4'
+	id 'com.google.protobuf' version '0.9.4'
 }
 
 group = 'com.swiggy'
@@ -9,6 +10,22 @@ version = '0.0.1-SNAPSHOT'
 
 java {
 	sourceCompatibility = '21'
+}
+
+protobuf {
+	protoc {
+		artifact = "com.google.protobuf:protoc:3.25.1"
+	}
+	plugins {
+		grpc {
+			artifact = 'io.grpc:protoc-gen-grpc-java:1.61.0'
+		}
+	}
+	generateProtoTasks {
+		all()*.plugins {
+			grpc {}
+		}
+	}
 }
 
 configurations {
@@ -31,6 +48,12 @@ dependencies {
 	testImplementation 'org.springframework.boot:spring-boot-starter-test'
 	implementation group: 'org.springframework.boot', name: 'spring-boot-starter-security', version: '3.2.2'
 	testImplementation 'org.springframework.security:spring-security-test'
+	implementation 'io.grpc:grpc-protobuf:1.61.0'
+	implementation 'io.grpc:grpc-stub:1.61.0'
+	implementation 'io.grpc:protoc-gen-grpc-java:1.61.1'
+	implementation 'io.grpc:grpc-netty-shaded:1.61.0'
+	compileOnly 'org.apache.tomcat:annotations-api:6.0.53' // necessary for Java 9+
+	runtimeOnly 'io.grpc:grpc-netty-shaded:1.61.0'
 }
 
 tasks.named('test') {

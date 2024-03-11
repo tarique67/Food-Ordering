@@ -30,6 +30,7 @@ public class AppConfig {
         http.csrf().disable()
                 .authorizeHttpRequests((authorize) -> {
                     authorize.requestMatchers(HttpMethod.POST,"/api/v1/customers").permitAll().
+                            requestMatchers(HttpMethod.PUT,"/api/v1/orders/{order_id}").permitAll().
                             anyRequest().authenticated();
                 }).
                 headers(headers -> headers.frameOptions(HeadersConfigurer.FrameOptionsConfig::disable)).httpBasic(Customizer.withDefaults());

@@ -3,8 +3,11 @@ package com.swiggy.orderService.entities;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.swiggy.orderService.clients.catalogServiceClients.CatalogServiceClient;
 import com.swiggy.orderService.clients.catalogServiceClients.responseModels.Restaurant;
+import com.swiggy.orderService.clients.fulfillmentServiceClients.FulfillmentServiceClient;
 import com.swiggy.orderService.enums.OrderStatus;
+import com.swiggy.orderService.exceptions.DeliveryExecutiveNotFoundException;
 import com.swiggy.orderService.exceptions.ItemNotInRestaurantException;
+import com.swiggy.orderService.proto.AssignOrderResponse;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -32,12 +35,14 @@ public class Orders {
 
     private Double total_price;
 
-    @ManyToOne(cascade = CascadeType.ALL)
+    @ManyToOne
     @JoinColumn(name = "customer_id")
     private Customer customer;
 
     @OneToMany(cascade = CascadeType.ALL)
     private List<Item> items;
+
+    private Integer deliveryExecutiveId;
 
     public void create(int restaurantId, List<String> items, Customer customer) throws JsonProcessingException, ItemNotInRestaurantException {
         Restaurant restaurant = new CatalogServiceClient().fetchRestaurantFromCatalogService(restaurantId);
@@ -54,6 +59,12 @@ public class Orders {
         this.total_price = total_price;
         this.status = OrderStatus.ACCEPTED;
         this.customer = customer;
+    }
 
+    public void assignDeliveryExecutive(int restaurantId) throws JsonProcessingException, DeliveryExecutiveNotFoundException {
+        Restaurant restaurant = new CatalogServiceClient().fetchRestaurantFromCatalogService(restaurantId);
+        AssignOrderResponse response = FulfillmentServiceClient.assignOrder(this, restaurant.getAddress());
+        this.deliveryExecutiveId = (int)response.getOrder().getDeliveryExecutiveId();
+        this.status = OrderStatus.valueOf(response.getOrder().getStatus());
     }
 }

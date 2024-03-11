@@ -1,6 +1,8 @@
 package com.swiggy.orderService.controllers;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.swiggy.orderService.enums.OrderStatus;
+import com.swiggy.orderService.exceptions.DeliveryExecutiveNotFoundException;
 import com.swiggy.orderService.exceptions.ItemNotInRestaurantException;
 import com.swiggy.orderService.exceptions.OrderNotFoundException;
 import com.swiggy.orderService.exceptions.UserNotFoundException;
@@ -21,7 +23,7 @@ public class OrdersController {
     private OrdersService ordersService;
 
     @PostMapping
-    public ResponseEntity<OrdersResponseModel> create(@RequestBody OrdersRequestModel ordersRequest) throws JsonProcessingException, ItemNotInRestaurantException, UserNotFoundException {
+    public ResponseEntity<OrdersResponseModel> create(@RequestBody OrdersRequestModel ordersRequest) throws JsonProcessingException, ItemNotInRestaurantException, UserNotFoundException, DeliveryExecutiveNotFoundException {
         String username = SecurityContextHolder.getContext().getAuthentication().getName();
         OrdersResponseModel response = ordersService.create(username, ordersRequest);
         return new ResponseEntity<>(response, HttpStatus.CREATED);
@@ -31,6 +33,12 @@ public class OrdersController {
     public ResponseEntity<OrdersResponseModel> fetch(@PathVariable("order_id") int orderId) throws UserNotFoundException, OrderNotFoundException {
         String username = SecurityContextHolder.getContext().getAuthentication().getName();
         OrdersResponseModel response = ordersService.fetch(username, orderId);
+        return new ResponseEntity<>(response, HttpStatus.OK);
+    }
+
+    @PutMapping("/{order_id}")
+    public ResponseEntity<OrdersResponseModel> update(@PathVariable("order_id") int orderId, @RequestParam OrderStatus status) throws OrderNotFoundException {
+        OrdersResponseModel response = ordersService.update(orderId, status);
         return new ResponseEntity<>(response, HttpStatus.OK);
     }
 }

@@ -7,6 +7,7 @@ import com.swiggy.orderService.entities.Customer;
 import com.swiggy.orderService.entities.Item;
 import com.swiggy.orderService.entities.Orders;
 import com.swiggy.orderService.enums.OrderStatus;
+import com.swiggy.orderService.exceptions.DeliveryExecutiveNotFoundException;
 import com.swiggy.orderService.exceptions.ItemNotInRestaurantException;
 import com.swiggy.orderService.exceptions.OrderNotFoundException;
 import com.swiggy.orderService.exceptions.UserNotFoundException;
@@ -52,21 +53,24 @@ public class OrdersServiceTest {
     @Mock
     private Authentication authentication;
 
+    @Mock
+    private Orders orderMock;
+
     @InjectMocks
     private OrdersServiceImpl ordersService;
 
     @Test
-    void testCreateOrder_ExpectSuccessful() throws UserNotFoundException, JsonProcessingException, ItemNotInRestaurantException {
+    void testCreateOrder_ExpectSuccessful() throws UserNotFoundException, JsonProcessingException, ItemNotInRestaurantException, DeliveryExecutiveNotFoundException {
         Customer customer = new Customer(1, "test", "test", "test", new ArrayList<>());
-        List<Item> items = new ArrayList<>(List.of(new Item(1, "wings", 180.0), new Item(2, "rings", 180.0)));
-        Orders order = new Orders(1, 1, OrderStatus.ACCEPTED, 360.0, customer, items);
+        List<Item> items = new ArrayList<>(List.of(new Item(1,1, "wings", 180.0), new Item(2,2, "rings", 180.0)));
+        Orders order = new Orders(1, 1, OrderStatus.ACCEPTED, 360.0, customer, items, 1);
         OrdersRequestModel request = new OrdersRequestModel(1, List.of("wings", "rings"));
         when(customerRepository.findByUserName("test")).thenReturn(Optional.of(customer));
         when(authentication.getName()).thenReturn("test");
         when(securityContext.getAuthentication()).thenReturn(authentication);
         SecurityContextHolder.setContext(securityContext);
         when(ordersRepository.save(any())).thenReturn(order);
-        OrdersResponseModel expected = new OrdersResponseModel(1,1,OrderStatus.ACCEPTED,360.0,"test", items);
+        OrdersResponseModel expected = new OrdersResponseModel(1,1,OrderStatus.ACCEPTED,360.0,"test", items,1);
 
         OrdersResponseModel actual = ordersService.create("test", request);
 
@@ -78,16 +82,16 @@ public class OrdersServiceTest {
 
     @Test
     void testFetchOrder_ExpectSuccessful() throws UserNotFoundException, JsonProcessingException, ItemNotInRestaurantException, OrderNotFoundException {
-        List<Item> items = new ArrayList<>(List.of(new Item(1, "wings", 180.0), new Item(2, "rings", 180.0)));
+        List<Item> items = new ArrayList<>(List.of(new Item(1,1, "wings", 180.0), new Item(2,2, "rings", 180.0)));
         Customer customer = new Customer(1, "test", "test", "test", new ArrayList<>());
-        Orders order = new Orders(1, 1, OrderStatus.ACCEPTED, 360.0, customer, items);
+        Orders order = new Orders(1, 1, OrderStatus.ACCEPTED, 360.0, customer, items, 1);
         customer.getOrders().add(order);
         when(customerRepository.findByUserName("test")).thenReturn(Optional.of(customer));
         when(authentication.getName()).thenReturn("test");
         when(securityContext.getAuthentication()).thenReturn(authentication);
         SecurityContextHolder.setContext(securityContext);
         when(ordersRepository.findById(1)).thenReturn(Optional.of(order));
-        OrdersResponseModel expected = new OrdersResponseModel(1,1,OrderStatus.ACCEPTED,360.0,"test", items);
+        OrdersResponseModel expected = new OrdersResponseModel(1,1,OrderStatus.ACCEPTED,360.0,"test", items,1);
 
         OrdersResponseModel actual = ordersService.fetch("test", 1);
 
@@ -110,9 +114,9 @@ public class OrdersServiceTest {
 
     @Test
     void testFetchOrder_ExpectSOrderNotFoundExceptionOrderCustomerMismatch() throws UserNotFoundException, JsonProcessingException, ItemNotInRestaurantException, OrderNotFoundException {
-        List<Item> items = new ArrayList<>(List.of(new Item(1, "wings", 180.0), new Item(2, "rings", 180.0)));
+        List<Item> items = new ArrayList<>(List.of(new Item(1,1, "wings", 180.0), new Item(2,2, "rings", 180.0)));
         Customer customer = new Customer(1, "test", "test", "test", new ArrayList<>());
-        Orders order = new Orders(1, 1, OrderStatus.ACCEPTED, 360.0, new Customer(), items);
+        Orders order = new Orders(1, 1, OrderStatus.ACCEPTED, 360.0, new Customer(), items, 1);
         when(customerRepository.findByUserName("test")).thenReturn(Optional.of(customer));
         when(authentication.getName()).thenReturn("test");
         when(securityContext.getAuthentication()).thenReturn(authentication);
