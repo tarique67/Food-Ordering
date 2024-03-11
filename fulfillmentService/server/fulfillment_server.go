@@ -8,6 +8,7 @@ import (
 	pb "fulfillment_service/proto"
 	"log"
 	"net"
+	"net/http"
 
 	"github.com/google/uuid"
 	"google.golang.org/grpc"
@@ -174,10 +175,36 @@ func (s *server) UpdateStatus(ctx context.Context, req *pb.UpdateStatusRequest) 
         }
     }
 
+	// Update the status in the order service
+    if err := updateOrderStatusInOrderService(orderId, status); err != nil {
+        return nil, err
+    }
+
     return &pb.UpdateStatusResponse{
         OrderId: orderId,
         Status:  status,
     }, nil
+}
+
+func updateOrderStatusInOrderService(orderId int64, status string) error {
+    url := fmt.Sprintf("http://localhost:8092/api/v1/orders/%d?status=%s", orderId, status)
+    req, err := http.NewRequest(http.MethodPut, url, nil)
+    if err != nil {
+        return err
+    }
+
+    client := http.DefaultClient
+    resp, err := client.Do(req)
+    if err != nil {
+        return err
+    }
+    defer resp.Body.Close()
+
+    if resp.StatusCode != http.StatusOK {
+        return fmt.Errorf("unexpected status code: %d", resp.StatusCode)
+    }
+
+    return nil
 }
 
 func main() {
